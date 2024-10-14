@@ -199,32 +199,28 @@ func (w *Worker) stop(ctx context.Context) {
 		return
 	}
 	w.stopped = true
-	var err error
-	if _, er := w.workersMap.Delete(ctx, w.ID); er != nil {
-		err = fmt.Errorf("failed to remove worker %q from pool %q: %w", w.ID, w.Node.Name, er)
+	if _, err := w.workersMap.Delete(ctx, w.ID); err != nil {
+		w.logger.Error(fmt.Errorf("failed to remove worker from pool: %w", err))
 	}
-	if _, er := w.keepAliveMap.Delete(ctx, w.ID); er != nil {
-		err = fmt.Errorf("failed to remove worker %q from keep alive map: %w", w.ID, er)
+	if _, err := w.keepAliveMap.Delete(ctx, w.ID); err != nil {
+		w.logger.Error(fmt.Errorf("failed to remove worker from keep alive map: %w", err))
 	}
-	keys, er := w.jobsMap.Delete(ctx, w.ID)
-	if er != nil {
-		err = fmt.Errorf("failed to remove worker %q from jobs map: %w", w.ID, er)
+	keys, err := w.jobsMap.Delete(ctx, w.ID)
+	if err != nil {
+		w.logger.Error(fmt.Errorf("failed to remove worker from jobs map: %w", err))
 	}
 	if keys != "" {
 		for _, key := range strings.Split(keys, ",") {
-			if _, er := w.jobPayloadsMap.Delete(ctx, key); er != nil {
-				err = fmt.Errorf("worker stop: failed to remove job payload %q from job payloads map: %w", key, er)
+			if _, err := w.jobPayloadsMap.Delete(ctx, key); err != nil {
+				w.logger.Error(fmt.Errorf("worker stop: failed to remove job payload %q from job payloads map: %w", key, err))
 			}
 		}
 	}
 	w.reader.Close()
-	if er := w.stream.Destroy(ctx); er != nil {
-		err = fmt.Errorf("failed to destroy stream for worker %q: %w", w.ID, er)
+	if err := w.stream.Destroy(ctx); err != nil {
+		w.logger.Error(fmt.Errorf("failed to destroy stream for: %w", err))
 	}
 	close(w.done)
-	if err != nil {
-		w.logger.Error(err)
-	}
 }
 
 // stopAndWait stops the worker and waits for its goroutines to exit up to
